@@ -46,20 +46,26 @@ pipeline {
             }
         }
 
-        stage('Health check') {
-            steps {
-                script {
-                    sleep 5
-                    def response = bat(script: '''curl -s -o nul -w "%%{http_code}" http://localhost:5000''', returnStdout: true).trim()
-                    if (response != "200") {
-                        error("❌ Health check failed with response code: ${response}")
-                    } else {
-                        echo "✅ Health check passed!"
-                    }
-                }
+       stage('Health check') {
+    steps {
+        script {
+            sleep 5 // ждём поднятия сервера
+
+            def response = bat(
+                script: 'curl -s -o nul -w "%%{http_code}" http://localhost:5000',
+                returnStdout: true
+            ).trim()
+
+            echo "⚙️  Raw response: ${response}"
+
+            if (response != "200") {
+                error("❌ Health check failed with response code: ${response}")
+            } else {
+                echo "✅ Health check passed!"
             }
         }
     }
+}
 
     post {
         success {
