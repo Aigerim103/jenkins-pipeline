@@ -8,16 +8,13 @@ pipeline {
     }
 
     stages {
+
         stage('Clone project') {
             steps {
-                script {
-                    // Удаляем папку, если уже существует
-                    dir("${FOLDER_NAME}") {
-                        deleteDir()
-                    }
+                dir("${FOLDER_NAME}") {
+                    deleteDir() // очистка перед клоном
+                    git branch: 'main', url: "${REPO_URL}"
                 }
-                // Клонируем репозиторий
-                git branch: 'main', url: "${REPO_URL}"
             }
         }
 
@@ -46,26 +43,26 @@ pipeline {
             }
         }
 
-       stage('Health check') {
-    steps {
-        script {
-            sleep 5 // ждём поднятия сервера
+        stage('Health check') {
+            steps {
+                script {
+                    sleep 5 // дождаться поднятия контейнера
+                    def response = bat(
+                        script: 'curl -s -o nul -w "%%{http_code}" http://localhost:5000',
+                        returnStdout: true
+                    ).trim()
 
-            def response = bat(
-                script: 'curl -s -o nul -w "%%{http_code}" http://localhost:5000',
-                returnStdout: true
-            ).trim()
+                    echo "⚙️ Raw response: ${response}"
 
-            echo "⚙️  Raw response: ${response}"
-
-            if (response != "200") {
-                error("❌ Health check failed with response code: ${response}")
-            } else {
-                echo "✅ Health check passed!"
+                    if (response != "200") {
+                        error("❌ Health check failed with response code: ${response}")
+                    } else {
+                        echo "✅ Health check passed!"
+                    }
+                }
             }
         }
     }
-}
 
     post {
         success {
@@ -82,8 +79,7 @@ pipeline {
             }
             mail to: 'aigerim95.akk@gmail.com',
                  subject: "❌ Build FAILED - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                 body: "The Jenkins job '${env.JOB_NAME}' build #${env.BUILD_NUMBER} has failed."
+                 body: "The Jenkins job '${env.JOB_NAME}' build #${env.BUILD_NUMBER} has failed.\nCheck logs for details."
         }
     }
 }
-
