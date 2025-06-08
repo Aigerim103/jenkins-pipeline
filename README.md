@@ -1,99 +1,99 @@
-# DevOps Project
 
-This project demonstrates a basic CI/CD pipeline using **Jenkins**, **Docker**, and **SonarQube**.
+# Interactive Flask App CI/CD Project
 
----
+This project demonstrates a CI/CD pipeline using **Jenkins**, **Docker**, and **GitHub** with an interactive Flask web application.
 
-## ✅ Components
+## 🔧 Components
 
-- Jenkinsfile
-- Dockerfile
-- SonarQube static code analysis
-- Slack notifications
-- Minimal Flask application
-- GitHub integration
-
----
-
-## 📦 Pipeline Steps
-
-1. Checkout code from GitHub.
-2. Set version (based on Git commit hash or Jenkins build).
-3. Static code analysis using SonarQube.
-4. Build Docker image for the Flask app.
-5. Push Docker image to DockerHub.
-6. Run tests using pytest.
-7. Deploy step (dummy placeholder or Docker run).
-8. Slack notifications on success/failure.
+- ✅ Jenkinsfile
+- ✅ Dockerfile & Docker Compose
+- ✅ GitHub integration with external repository
+- ✅ Email notifications
+- ✅ Automatic versioning
+- ✅ Health checks
+- ✅ Rollback on failure
+- ✅ Custom interactive Flask application
 
 ---
 
-## 📁 Files
+## 🚀 Pipeline Stages
 
-- `Jenkinsfile` — defines the CI/CD pipeline.
-- `Dockerfile` — defines how to containerize the application.
-- `sonar-project.properties` — config for SonarQube analysis.
-- `app/` — minimal Flask application:
-  - `app.py` — basic Flask app.
-  - `requirements.txt` — dependencies.
+1. **Clone Project**: Jenkins pulls the Flask project from GitHub.
+2. **Set Version**: Pipeline generates a version based on build number and date, stored in `version.txt`.
+3. **Build Docker Image**: Docker Compose builds the image.
+4. **Run Containers**: Launch the application using `docker-compose up -d`.
+5. **Health Check**: Performs an HTTP request to `http://localhost:5000`.
+6. **Notification**: Sends email notifications on success or failure.
+7. **Rollback**: Docker containers are stopped on failure.
 
 ---
 
-## 🛠️ Custom Application
+## 📁 File Structure
 
-The project includes a basic Flask app:
+- `/Jenkinsfile`: Jenkins pipeline definition.
+- `/interactive-site`: Flask web app with:
+  - `app.py`: main application
+  - `templates/`: HTML templates
+  - `static/`: optional CSS/JS
+  - `Dockerfile`: image build
+  - `docker-compose.yml`: multi-container setup
+  - `requirements.txt`: Python dependencies
+  - `version.txt`: generated during pipeline
+
+---
+
+## 🌐 Custom Web App
+
+The app includes an interactive HTML form that allows users to submit messages, which are printed in console.
 
 ```python
-from flask import Flask
-
-app = Flask(__name__)
-
-@app.route('/')
-def hello():
-    return "Hello from DevOps Pipeline!"
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+@app.route('/', methods=['GET', 'POST'])
+def home():
+    if request.method == 'POST':
+        message = request.form.get('message')
+        print("Received:", message)
+        return render_template('response.html', message=message)
+    return render_template('form.html')
 ```
 
 ---
 
-## 📌 Notes
+## 📬 Email Configuration
 
-- Ansible playbooks were **not used** (optional).
-- You need to configure:
-  - Slack Webhook (for notifications)
-  - SonarQube server
+The Jenkins pipeline uses email notifications via Gmail SMTP.  
+You need to set up an **App Password** in your Gmail account and configure Jenkins accordingly.
 
 ---
 
-## 🧮 Points Mapping
-
-| Criteria                                             | Points |
-|------------------------------------------------------|--------|
-| Jenkins installation and configuration               | 1.0    |
-| Use of Jenkinsfile in GitHub repository              | 1.0    |
-| Creating Dockerfile and building Docker images       | 1.0    |
-| Defining the full application lifecycle in Jenkinsfile| 0.25   |
-| Setting up notifications (Slack)                     | 0.5    |
-| Static code analysis tools (SonarQube)               | 0.5    |
-| Custom application (Flask app)                       | 0.25   |
-| **Total**                                            | **4.5**|
-
----
-
-## 🧪 How to Run Locally
+## 📌 How to Run Locally
 
 ```bash
-# Build the Docker image
-docker build -t myflaskapp .
-
-# Run the Flask app in Docker
-docker run -p 5000:5000 myflaskapp
+git clone https://github.com/Aigerim103/interactive-site.git
+cd interactive-site
+docker-compose up --build
 ```
 
-Visit: [http://localhost:5000](http://localhost:5000)
+Visit `http://localhost:5000`
 
 ---
 
-📁 **Prepared for submission as part of DevOps CI/CD project**
+## ✅ Achievements & Points
+
+| Criteria                                                      | Points |
+|---------------------------------------------------------------|--------|
+| Jenkins installation and configuration                        | 1.0    |
+| Use of Jenkinsfile in GitHub repository                       | 1.0    |
+| Creating Dockerfile and building Docker images                | 1.0    |
+| Defining full application lifecycle in Jenkinsfile            | 0.25   |
+| Docker Compose for multi-container setup                      | 0.25   |
+| Rollback on failure                                           | 0.25   |
+| Email notifications                                           | 0.5    |
+| Automatic versioning                                          | 0.25   |
+| Custom interactive Flask application                          | 0.25   |
+| **Total**                                                     | **4.75** |
+
+---
+
+## 📝 Author
+
+Created by Aigerim Kairatova as part of the DevOps CI/CD project.
