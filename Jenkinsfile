@@ -5,16 +5,19 @@ pipeline {
         REPO_URL = 'https://github.com/Aigerim103/interactive-site.git'
         FOLDER_NAME = 'interactive-site'
         VERSION = "v1.0-${BUILD_NUMBER}-${new Date().format('yyyyMMdd-HHmm')}"
-        SLACK_WEBHOOK_URL = credentials('slack-webhook') // Предварительно добавить в Jenkins > Manage Credentials
     }
 
     stages {
         stage('Clone project') {
             steps {
-                dir("${FOLDER_NAME}") {
-                    deleteDir()
-                    git branch: 'main', url: "${REPO_URL}"
+                script {
+                    // Удаляем папку, если уже существует
+                    dir("${FOLDER_NAME}") {
+                        deleteDir()
+                    }
                 }
+                // Клонируем репозиторий
+                git branch: 'main', url: "${REPO_URL}"
             }
         }
 
@@ -47,19 +50,9 @@ pipeline {
             steps {
                 script {
                     sleep 5
-                    def raw = bat(
-                        script: 'curl -s -o nul -w "%%{http_code}" http://localhost:5000',
-                        returnStdout: true
-                    ).trim()
-
-                    echo "🩺 Raw response: ${raw}"
-
-                    // Оставляем только "200"
-                    def responseCode = raw.replaceAll('[^0-9]', '')
-                    echo "✅ Parsed code: ${responseCode}"
-
-                    if (responseCode != "200") {
-                        error("❌ Health check failed with code: ${responseCode}")
+                    def response = bat(script: '''curl -s -o nul -w "%%{http_code}" http://localhost:5000''', returnStdout: true).trim()
+                    if (response != "200") {
+                        error("❌ Health check failed with response code: ${response}")
                     } else {
                         echo "✅ Health check passed!"
                     }
@@ -73,29 +66,18 @@ pipeline {
             echo '🎉 Deployment successful!'
             mail to: 'aigerim95.akk@gmail.com',
                  subject: "✅ Build SUCCESS - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                 body: "Jenkins job '${env.JOB_NAME}' build #${env.BUILD_NUMBER} completed successfully.\nVersion: ${VERSION}"
-
-            slackSend (
-                color: 'good',
-                message: "✅ *Build SUCCESS* — ${env.JOB_NAME} #${env.BUILD_NUMBER}\nVersion: ${VERSION}",
-                webhookUrl: "${SLACK_WEBHOOK_URL}"
-            )
+                 body: "The Jenkins job '${env.JOB_NAME}' build #${env.BUILD_NUMBER} finished successfully.\nVersion: ${VERSION}"
         }
 
         failure {
-            echo '⚠️ Deployment failed.'
+            echo '⚠️ Something went wrong.'
             dir("${FOLDER_NAME}") {
                 bat 'docker-compose down || exit 0'
             }
             mail to: 'aigerim95.akk@gmail.com',
                  subject: "❌ Build FAILED - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                 body: "Build failed. Check logs in Jenkins."
-
-            slackSend (
-                color: 'danger',
-                message: "❌ *Build FAILED* — ${env.JOB_NAME} #${env.BUILD_NUMBER}\nPlease check the Jenkins console log.",
-                webhookUrl: "${SLACK_WEBHOOK_URL}"
-            )
+                 body: "The Jenkins job '${env.JOB_NAME}' build #${env.BUILD_NUMBER} has failed."
         }
     }
 }
+
