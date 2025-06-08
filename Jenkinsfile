@@ -12,7 +12,7 @@ pipeline {
             steps {
                 dir("${FOLDER_NAME}") {
                     deleteDir() // Очистка, чтобы избежать конфликта
-                    git "${REPO_URL}"
+                    git branch: 'main', url: 'https://github.com/Aigerim103/interactive-site.git'
                 }
             }
         }
