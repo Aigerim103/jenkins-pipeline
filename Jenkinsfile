@@ -57,23 +57,4 @@ pipeline {
             }
         }
     }
-
-    post {
-        success {
-            echo '🎉 Deployment successful!'
-            mail to: 'aigerim95.akk@gmail.com',
-                 subject: "✅ Build SUCCESS - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                 body: "The Jenkins job '${env.JOB_NAME}' build #${env.BUILD_NUMBER} finished successfully.\nVersion: ${VERSION}"
-        }
-
-        failure {
-            echo '⚠️ Something went wrong.'
-            dir("${FOLDER_NAME}") {
-                bat 'docker-compose down || exit 0'
-            }
-            mail to: 'aigerim95.akk@gmail.com',
-                 subject: "❌ Build FAILED - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                 body: "The Jenkins job '${env.JOB_NAME}' build #${env.BUILD_NUMBER} has failed.\nCheck logs for details."
-        }
-    }
 }
