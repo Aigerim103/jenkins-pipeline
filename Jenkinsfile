@@ -10,10 +10,14 @@ pipeline {
     stages {
         stage('Clone project') {
             steps {
-                dir("${FOLDER_NAME}") {
-                    deleteDir() // Очистка, чтобы избежать конфликта
-                    git branch: 'main', url: 'https://github.com/Aigerim103/interactive-site.git'
+                script {
+                    // Удаляем папку, если уже существует
+                    dir("${FOLDER_NAME}") {
+                        deleteDir()
+                    }
                 }
+                // Клонируем репозиторий
+                git branch: 'main', url: "${REPO_URL}"
             }
         }
 
@@ -45,8 +49,8 @@ pipeline {
         stage('Health check') {
             steps {
                 script {
-                    sleep 5 // ждём, пока поднимется сервер
-                    def response = bat '''curl -s -o nul -w "%%{http_code}" http://localhost:5000''', returnStdout: true).trim()
+                    sleep 5
+                    def response = bat(script: '''curl -s -o nul -w "%%{http_code}" http://localhost:5000''', returnStdout: true).trim()
                     if (response != "200") {
                         error("❌ Health check failed with response code: ${response}")
                     } else {
@@ -76,3 +80,4 @@ pipeline {
         }
     }
 }
+
