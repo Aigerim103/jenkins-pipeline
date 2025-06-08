@@ -49,13 +49,17 @@ pipeline {
         stage('Health check') {
             steps {
                 script {
-                    sleep 5
-                    def response = bat(script: 'curl -s -o /dev/null -w "%{http_code}" http://localhost:5000', returnStdout: true).trim()
-                    echo "🔎 Parsed response code: ${response}"
-                    if (response != '200') {
-                        echo "❌ Health check failed. Rolling back..."
-                        bat 'docker-compose down'
-                        error("Health check failed. Deployment rolled back.")
+                    sleep 5 // даём серверу подняться
+                    def raw = bat(
+                        script: 'curl -s -o nul -w "%%{http_code}" http://localhost:5000',
+                        returnStdout: true
+                    ).trim()
+
+                    def responseCode = raw.readLines().last().trim()
+                    echo "🔎 Parsed response code: ${responseCode}"
+
+                    if (responseCode != "200") {
+                        error("❌ Health check failed with code: ${responseCode}")
                     } else {
                         echo "✅ Health check passed!"
                     }
