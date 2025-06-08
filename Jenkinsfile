@@ -6,14 +6,12 @@ pipeline {
         FOLDER_NAME = 'interactive-site'
         VERSION = "v1.0-${BUILD_NUMBER}-${new Date().format('yyyyMMdd-HHmm')}"
     }
-
-    stages {
-        stage('Clone project') {
-            steps {
-                bat "git clone ${REPO_URL} ${FOLDER_NAME}"
-            }
-        }
-
+stage('Clone project') {
+    steps {
+        bat 'rmdir /s /q interactive-site'
+        bat 'git clone https://github.com/Aigerim103/interactive-site.git interactive-site'
+    }
+}
         stage('Set version') {
             steps {
                 dir("${FOLDER_NAME}") {
