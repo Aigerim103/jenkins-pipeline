@@ -1,10 +1,19 @@
 pipeline {
     agent any
 
+    parameters {
+        choice(
+            name: 'ENVIRONMENT',
+            choices: ['staging', 'production'],
+            defaultValue: 'staging',
+            description: 'Select deployment environment'
+        )
+    }
+
     environment {
         REPO_URL = 'https://github.com/Aigerim103/interactive-site.git'
         FOLDER_NAME = 'interactive-site'
-        VERSION = "v1.0-${BUILD_NUMBER}-${new Date().format('yyyyMMdd-HHmm')}"
+        VERSION = "v1.0-${params.ENVIRONMENT ?: 'staging'}-${new Date().format('yyyyMMdd-HHmm')}"
     }
 
     stages {
@@ -12,7 +21,7 @@ pipeline {
             steps {
                 dir("${FOLDER_NAME}") {
                     deleteDir()
-                    git branch: 'main', url: "${REPO_URL}"
+                    git url: "${REPO_URL}", branch: 'main'
                 }
             }
         }
@@ -45,7 +54,7 @@ pipeline {
         stage('Health check') {
             steps {
                 script {
-                    sleep 5 // даём серверу подняться
+                    sleep 5
                     def raw = bat(
                         script: 'curl -s -o nul -w "%%{http_code}" http://localhost:5000',
                         returnStdout: true
@@ -68,18 +77,32 @@ pipeline {
         success {
             echo '🎉 Deployment successful!'
             mail to: 'aigerim95.akk@gmail.com',
-                 subject: "✅ Build SUCCESS - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                 body: "The Jenkins job '${env.JOB_NAME}' build #${env.BUILD_NUMBER} finished successfully.\nVersion: ${VERSION}"
+                subject: "✅ ${env.JOB_NAME} #${env.BUILD_NUMBER} — SUCCESS",
+                body: """The deployment was successful 🎉
+
+Environment: ${params.ENVIRONMENT}
+Version: ${VERSION}
+Job: ${env.JOB_NAME} #${env.BUILD_NUMBER}
+"""
         }
 
         failure {
             echo '⚠️ Deployment failed.'
+            mail to: 'aigerim95.akk@gmail.com',
+                subject: "❌ ${env.JOB_NAME} #${env.BUILD_NUMBER} — FAILED",
+                body: """The deployment failed ❌
+
+Environment: ${params.ENVIRONMENT}
+Version: ${VERSION}
+Please check the Jenkins logs for details.
+"""
+        }
+
+        always {
+            echo '🧹 Cleaning up containers...'
             dir("${FOLDER_NAME}") {
                 bat 'docker-compose down || exit 0'
             }
-            mail to: 'aigerim95.akk@gmail.com',
-                 subject: "❌ Build FAILED - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                 body: "The Jenkins job '${env.JOB_NAME}' build #${env.BUILD_NUMBER} has failed."
         }
     }
 }
