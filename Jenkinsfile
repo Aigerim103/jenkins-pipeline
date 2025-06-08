@@ -10,14 +10,10 @@ pipeline {
     stages {
         stage('Clone project') {
             steps {
-                script {
-                    // Удаляем папку, если уже существует
-                    dir("${FOLDER_NAME}") {
-                        deleteDir()
-                    }
+                dir("${FOLDER_NAME}") {
+                    deleteDir()
+                    git branch: 'main', url: "${REPO_URL}"
                 }
-                // Клонируем репозиторий
-                git branch: 'main', url: "${REPO_URL}"
             }
         }
 
@@ -49,10 +45,17 @@ pipeline {
         stage('Health check') {
             steps {
                 script {
-                    sleep 5
-                    def response = bat(script: '''curl -s -o nul -w "%%{http_code}" http://localhost:5000''', returnStdout: true).trim()
-                    if (response != "200") {
-                        error("❌ Health check failed with response code: ${response}")
+                    sleep 5 // даём серверу подняться
+                    def raw = bat(
+                        script: 'curl -s -o nul -w "%%{http_code}" http://localhost:5000',
+                        returnStdout: true
+                    ).trim()
+
+                    def responseCode = raw.readLines().last().trim()
+                    echo "🔎 Parsed response code: ${responseCode}"
+
+                    if (responseCode != "200") {
+                        error("❌ Health check failed with code: ${responseCode}")
                     } else {
                         echo "✅ Health check passed!"
                     }
@@ -70,7 +73,7 @@ pipeline {
         }
 
         failure {
-            echo '⚠️ Something went wrong.'
+            echo '⚠️ Deployment failed.'
             dir("${FOLDER_NAME}") {
                 bat 'docker-compose down || exit 0'
             }
@@ -80,4 +83,3 @@ pipeline {
         }
     }
 }
-
