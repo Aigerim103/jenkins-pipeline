@@ -1,25 +1,29 @@
 pipeline {
     agent any
 
+    parameters {
+        choice(name: 'ENVIRONMENT', choices: ['staging', 'production'], description: 'Select deployment environment')
+    }
+
     environment {
         REPO_URL = 'https://github.com/Aigerim103/interactive-site.git'
-        FOLDER_NAME = 'interactive-site'
-        VERSION = "v1.0-${BUILD_NUMBER}-${new Date().format('yyyyMMdd-HHmm')}"
+        APP_NAME = 'interactive-site-web'
+        VERSION = "v1.0-${params.ENVIRONMENT}-${new Date().format('dd-MM-yyyy-HHmm')}"
     }
 
     stages {
         stage('Clone project') {
             steps {
-                dir("${FOLDER_NAME}") {
+                dir('interactive-site') {
                     deleteDir()
-                    git branch: 'main', url: "${REPO_URL}"
+                    git url: "${REPO_URL}", branch: 'main'
                 }
             }
         }
 
         stage('Set version') {
             steps {
-                dir("${FOLDER_NAME}") {
+                dir('interactive-site') {
                     writeFile file: 'version.txt', text: "${VERSION}"
                     echo "🔖 App version set to: ${VERSION}"
                 }
@@ -28,7 +32,7 @@ pipeline {
 
         stage('Build Docker image') {
             steps {
-                dir("${FOLDER_NAME}") {
+                dir('interactive-site') {
                     bat 'docker-compose build'
                 }
             }
@@ -36,7 +40,7 @@ pipeline {
 
         stage('Run containers') {
             steps {
-                dir("${FOLDER_NAME}") {
+                dir('interactive-site') {
                     bat 'docker-compose up -d'
                 }
             }
@@ -45,17 +49,13 @@ pipeline {
         stage('Health check') {
             steps {
                 script {
-                    sleep 5 // даём серверу подняться
-                    def raw = bat(
-                        script: 'curl -s -o nul -w "%%{http_code}" http://localhost:5000',
-                        returnStdout: true
-                    ).trim()
-
-                    def responseCode = raw.readLines().last().trim()
-                    echo "🔎 Parsed response code: ${responseCode}"
-
-                    if (responseCode != "200") {
-                        error("❌ Health check failed with code: ${responseCode}")
+                    sleep 5
+                    def response = bat(script: 'curl -s -o /dev/null -w "%{http_code}" http://localhost:5000', returnStdout: true).trim()
+                    echo "🔎 Parsed response code: ${response}"
+                    if (response != '200') {
+                        echo "❌ Health check failed. Rolling back..."
+                        bat 'docker-compose down'
+                        error("Health check failed. Deployment rolled back.")
                     } else {
                         echo "✅ Health check passed!"
                     }
@@ -68,18 +68,18 @@ pipeline {
         success {
             echo '🎉 Deployment successful!'
             mail to: 'aigerim95.akk@gmail.com',
-                 subject: "✅ Build SUCCESS - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                 body: "The Jenkins job '${env.JOB_NAME}' build #${env.BUILD_NUMBER} finished successfully.\nVersion: ${VERSION}"
+                 subject: "✅ ${env.JOB_NAME} #${env.BUILD_NUMBER} — SUCCESS",
+                 body: "The deployment was successful.\n\nEnvironment: ${params.ENVIRONMENT}\nVersion: ${VERSION}"
         }
-
         failure {
-            echo '⚠️ Deployment failed.'
-            dir("${FOLDER_NAME}") {
+            mail to: 'aigerim95.akk@gmail.com',
+                 subject: "❌ ${env.JOB_NAME} #${env.BUILD_NUMBER} — FAILED",
+                 body: "The deployment failed. Please check the logs.\nEnvironment: ${params.ENVIRONMENT}"
+        }
+        always {
+            dir('interactive-site') {
                 bat 'docker-compose down || exit 0'
             }
-            mail to: 'aigerim95.akk@gmail.com',
-                 subject: "❌ Build FAILED - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                 body: "The Jenkins job '${env.JOB_NAME}' build #${env.BUILD_NUMBER} has failed."
         }
     }
 }
