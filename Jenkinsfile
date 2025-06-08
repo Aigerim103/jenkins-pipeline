@@ -6,19 +6,22 @@ pipeline {
         FOLDER_NAME = 'interactive-site'
         VERSION = "v1.0-${BUILD_NUMBER}-${new Date().format('yyyyMMdd-HHmm')}"
     }
-stage('Clone project') {
-    steps {
-        bat 'rmdir /s /q interactive-site'
-        bat 'git clone https://github.com/Aigerim103/interactive-site.git interactive-site'
-    }
-}
+
+    stages {
+        stage('Clone project') {
+            steps {
+                dir("${FOLDER_NAME}") {
+                    deleteDir() // Очистка, чтобы избежать конфликта
+                    git "${REPO_URL}"
+                }
+            }
+        }
+
         stage('Set version') {
             steps {
                 dir("${FOLDER_NAME}") {
-                    script {
-                        writeFile file: 'version.txt', text: "${VERSION}"
-                        echo "🔖 App version set to: ${VERSION}"
-                    }
+                    writeFile file: 'version.txt', text: "${VERSION}"
+                    echo "🔖 App version set to: ${VERSION}"
                 }
             }
         }
@@ -42,7 +45,7 @@ stage('Clone project') {
         stage('Health check') {
             steps {
                 script {
-                    sleep 5
+                    sleep 5 // ждём, пока поднимется сервер
                     def response = bat(script: 'curl -s -o nul -w "%{http_code}" http://localhost:5000', returnStdout: true).trim()
                     if (response != "200") {
                         error("❌ Health check failed with response code: ${response}")
@@ -58,8 +61,8 @@ stage('Clone project') {
         success {
             echo '🎉 Deployment successful!'
             mail to: 'aigerim95.akk@gmail.com',
-                 subject: "✅ SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                 body: "Build successful!\n\nVersion: ${VERSION}\nJob: ${env.BUILD_URL}"
+                 subject: "✅ Build SUCCESS - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                 body: "The Jenkins job '${env.JOB_NAME}' build #${env.BUILD_NUMBER} finished successfully.\nVersion: ${VERSION}"
         }
 
         failure {
@@ -68,8 +71,8 @@ stage('Clone project') {
                 bat 'docker-compose down || exit 0'
             }
             mail to: 'aigerim95.akk@gmail.com',
-                 subject: "❌ FAILURE: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                 body: "Build failed!\n\nCheck the logs here: ${env.BUILD_URL}"
+                 subject: "❌ Build FAILED - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                 body: "The Jenkins job '${env.JOB_NAME}' build #${env.BUILD_NUMBER} has failed."
         }
     }
 }
