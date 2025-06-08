@@ -1,29 +1,25 @@
 pipeline {
     agent any
 
-    parameters {
-        choice(name: 'ENVIRONMENT', choices: ['staging', 'production'], description: 'Select deployment environment')
-    }
-
     environment {
         REPO_URL = 'https://github.com/Aigerim103/interactive-site.git'
-        APP_NAME = 'interactive-site-web'
-        VERSION = "v1.0-${params.ENVIRONMENT}-${new Date().format('dd-MM-yyyy-HHmm')}"
+        FOLDER_NAME = 'interactive-site'
+        VERSION = "v1.0-${BUILD_NUMBER}-${new Date().format('yyyyMMdd-HHmm')}"
     }
 
     stages {
         stage('Clone project') {
             steps {
-                dir('interactive-site') {
+                dir("${FOLDER_NAME}") {
                     deleteDir()
-                    git url: "${REPO_URL}", branch: 'main'
+                    git branch: 'main', url: "${REPO_URL}"
                 }
             }
         }
 
         stage('Set version') {
             steps {
-                dir('interactive-site') {
+                dir("${FOLDER_NAME}") {
                     writeFile file: 'version.txt', text: "${VERSION}"
                     echo "🔖 App version set to: ${VERSION}"
                 }
@@ -32,7 +28,7 @@ pipeline {
 
         stage('Build Docker image') {
             steps {
-                dir('interactive-site') {
+                dir("${FOLDER_NAME}") {
                     bat 'docker-compose build'
                 }
             }
@@ -40,7 +36,7 @@ pipeline {
 
         stage('Run containers') {
             steps {
-                dir('interactive-site') {
+                dir("${FOLDER_NAME}") {
                     bat 'docker-compose up -d'
                 }
             }
@@ -72,18 +68,18 @@ pipeline {
         success {
             echo '🎉 Deployment successful!'
             mail to: 'aigerim95.akk@gmail.com',
-                 subject: "✅ ${env.JOB_NAME} #${env.BUILD_NUMBER} — SUCCESS",
-                 body: "The deployment was successful.\n\nEnvironment: ${params.ENVIRONMENT}\nVersion: ${VERSION}"
+                 subject: "✅ Build SUCCESS - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                 body: "The Jenkins job '${env.JOB_NAME}' build #${env.BUILD_NUMBER} finished successfully.\nVersion: ${VERSION}"
         }
+
         failure {
-            mail to: 'aigerim95.akk@gmail.com',
-                 subject: "❌ ${env.JOB_NAME} #${env.BUILD_NUMBER} — FAILED",
-                 body: "The deployment failed. Please check the logs.\nEnvironment: ${params.ENVIRONMENT}"
-        }
-        always {
-            dir('interactive-site') {
+            echo '⚠️ Deployment failed.'
+            dir("${FOLDER_NAME}") {
                 bat 'docker-compose down || exit 0'
             }
+            mail to: 'aigerim95.akk@gmail.com',
+                 subject: "❌ Build FAILED - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                 body: "The Jenkins job '${env.JOB_NAME}' build #${env.BUILD_NUMBER} has failed."
         }
     }
 }
